@@ -1,15 +1,15 @@
-.PHONY: build run clean test
+.PHONY: build run clean test deps fmt vet
 
 
 BINARY_NAME=zont
 
 
 build:
-	go build -o $(BINARY_NAME) .
+	go build -o $(BINARY_NAME) ./cmd
 
 
 run:
-	go run .
+	go run ./cmd
 
 
 clean:
@@ -17,15 +17,14 @@ clean:
 	rm -f $(BINARY_NAME)
 
 test:
-	go build -o $(BINARY_NAME) .
-	@echo "Successfully!"
+	go test ./...
 
 deps:
 	go mod tidy
 
 
 fmt:
-	go fmt .
+	go fmt ./...
 
 vet:
-	go vet .
+	go vet ./...

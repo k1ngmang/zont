@@ -1,4 +1,4 @@
-package main
+package matrix
 
 import (
 	"math"
@@ -9,7 +9,7 @@ type Matrix struct {
 	cols         int
 	rows         int
 	angle        float64
-	screenBuffer [2][][]rune
+	ScreenBuffer [2][][]rune
 }
 
 func NewMatrix(cols, rows int) *Matrix {
@@ -19,21 +19,21 @@ func NewMatrix(cols, rows int) *Matrix {
 		angle: 0,
 	}
 
-	m.screenBuffer[0] = make([][]rune, rows)
-	m.screenBuffer[1] = make([][]rune, rows)
+	m.ScreenBuffer[0] = make([][]rune, rows)
+	m.ScreenBuffer[1] = make([][]rune, rows)
 	for i := 0; i < rows; i++ {
-		m.screenBuffer[0][i] = make([]rune, cols+1)
-		m.screenBuffer[1][i] = make([]rune, cols+1)
+		m.ScreenBuffer[0][i] = make([]rune, cols+1)
+		m.ScreenBuffer[1][i] = make([]rune, cols+1)
 	}
 
 	return m
 }
 
-func clamp(value float64, min, max int) int {
+func Clamp(value float64, min, max int) int {
 	return int(math.Min(float64(max), math.Max(float64(min), value)))
 }
 
-func multiplyMatrices(matrixA, matrixB [][]float64) [][]float64 {
+func MultiplyMatrices(matrixA, matrixB [][]float64) [][]float64 {
 	result := make([][]float64, len(matrixA))
 	for i := range result {
 		result[i] = make([]float64, len(matrixB[0]))
@@ -54,7 +54,7 @@ type Triangle struct {
 	avgZ  float64
 }
 
-func (m *Matrix) sortVerts(verts [][]float64) [][]float64 {
+func (m *Matrix) SortVerts(verts [][]float64) [][]float64 {
 	var triangles []Triangle
 
 	for i := 0; i < len(verts); i += 4 {

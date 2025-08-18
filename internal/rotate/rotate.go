@@ -1,4 +1,4 @@
-package main
+package rotate
 
 type Rotate struct {
 	x [][]float64
@@ -10,20 +10,20 @@ func NewRotate() *Rotate {
 	return &Rotate{}
 }
 
-func (r *Rotate) update(x, y, z [][]float64) {
+func (r *Rotate) Update(x, y, z [][]float64) {
 	r.x = x
 	r.y = y
 	r.z = z
 }
 
-func (r *Rotate) getX() [][]float64 {
+func (r *Rotate) GetX() [][]float64 {
 	return r.x
 }
 
-func (r *Rotate) getY() [][]float64 {
+func (r *Rotate) GetY() [][]float64 {
 	return r.y
 }
 
-func (r *Rotate) getZ() [][]float64 {
+func (r *Rotate) GetZ() [][]float64 {
 	return r.z
 }

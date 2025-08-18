@@ -1,4 +1,4 @@
-package main
+package render
 
 import (
 	"bufio"
@@ -7,19 +7,23 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"zontengine/internal/matrix"
+	"zontengine/internal/screen"
+	"zontengine/internal/rotate"
+	"zontengine/internal/convert"
 )
 
 type Render struct {
-	matrix *Matrix
-	screen *Screen
-	rotate *Rotate
+	matrix *matrix.Matrix
+	screen *screen.Screen
+	rotate *rotate.Rotate
 }
 
-func NewRender(matrix *Matrix) *Render {
+func NewRender(matrix *matrix.Matrix) *Render {
 	return &Render{
 		matrix: matrix,
-		screen: NewScreen(matrix),
-		rotate: NewRotate(),
+		screen: screen.NewScreen(matrix),
+		rotate: rotate.NewRotate(),
 	}
 }
 
@@ -29,9 +33,9 @@ func (r *Render) Render(verts [][]float64) {
 	for {
 		r.updateRotation()
 		visibleVerts := r.processVertices(verts)
-		vertsToRender := r.matrix.sortVerts(visibleVerts)
+		vertsToRender := r.matrix.SortVerts(visibleVerts)
 
-		r.screen.initScreen(r.matrix.screenBuffer[0])
+		r.screen.InitScreen(r.matrix.ScreenBuffer[0])
 
 		for i := 0; i < len(vertsToRender); i += 4 {
 			if i+3 < len(vertsToRender) {
@@ -39,8 +43,8 @@ func (r *Render) Render(verts [][]float64) {
 			}
 		}
 
-		for i := 0; i < len(r.matrix.screenBuffer[0]); i++ {
-			copy(r.matrix.screenBuffer[1][i], r.matrix.screenBuffer[0][i])
+		for i := 0; i < len(r.matrix.ScreenBuffer[0]); i++ {
+			copy(r.matrix.ScreenBuffer[1][i], r.matrix.ScreenBuffer[0][i])
 		}
 	}
 }
@@ -49,7 +53,7 @@ func (r *Render) renderThread() {
 	fps := 60
 	for {
 		start := time.Now()
-		r.screen.drawScreen()
+		r.screen.DrawScreen()
 		r.matrix.SetAngle(r.matrix.GetAngle() + 0.03*(60.0/float64(fps)))
 
 		elapsed := time.Since(start)
@@ -81,7 +85,7 @@ func (r *Render) updateRotation() {
 		{0, 0, 1},
 	}
 
-	r.rotate.update(xMatrix, yMatrix, zMatrix)
+	r.rotate.Update(xMatrix, yMatrix, zMatrix)
 }
 
 func (r *Render) processVertices(verts [][]float64) [][]float64 {
@@ -92,9 +96,9 @@ func (r *Render) processVertices(verts [][]float64) [][]float64 {
 			break
 		}
 
-		vert1 := toArray1D(multiplyMatrices(r.rotate.getX(), multiplyMatrices(r.rotate.getY(), multiplyMatrices(r.rotate.getZ(), toArray2D(verts[i])))))
-		vert2 := toArray1D(multiplyMatrices(r.rotate.getX(), multiplyMatrices(r.rotate.getY(), multiplyMatrices(r.rotate.getZ(), toArray2D(verts[i+1])))))
-		vert3 := toArray1D(multiplyMatrices(r.rotate.getX(), multiplyMatrices(r.rotate.getY(), multiplyMatrices(r.rotate.getZ(), toArray2D(verts[i+2])))))
+		vert1 := convert.ToArray1D(matrix.MultiplyMatrices(r.rotate.GetX(), matrix.MultiplyMatrices(r.rotate.GetY(), matrix.MultiplyMatrices(r.rotate.GetZ(), convert.ToArray2D(verts[i])))))
+		vert2 := convert.ToArray1D(matrix.MultiplyMatrices(r.rotate.GetX(), matrix.MultiplyMatrices(r.rotate.GetY(), matrix.MultiplyMatrices(r.rotate.GetZ(), convert.ToArray2D(verts[i+1])))))
+		vert3 := convert.ToArray1D(matrix.MultiplyMatrices(r.rotate.GetX(), matrix.MultiplyMatrices(r.rotate.GetY(), matrix.MultiplyMatrices(r.rotate.GetZ(), convert.ToArray2D(verts[i+2])))))
 
 		normal := []float64{
 			((vert2[1] - vert1[1]) * (vert3[2] - vert1[2])) - ((vert2[2] - vert1[2]) * (vert3[1] - vert1[1])),
@@ -118,11 +122,11 @@ func (r *Render) processVertices(verts [][]float64) [][]float64 {
 }
 
 func (r *Render) fillTriangle(vert1, vert2, vert3, normal []float64) {
-	tempScreen := make([][]rune, len(r.matrix.screenBuffer[0]))
+	tempScreen := make([][]rune, len(r.matrix.ScreenBuffer[0]))
 	for i := range tempScreen {
-		tempScreen[i] = make([]rune, len(r.matrix.screenBuffer[0][0]))
+		tempScreen[i] = make([]rune, len(r.matrix.ScreenBuffer[0][0]))
 	}
-	r.screen.initScreen(tempScreen)
+	r.screen.InitScreen(tempScreen)
 
 	projection := [][]float64{
 		{1, 0, 0},
@@ -138,11 +142,11 @@ func (r *Render) fillTriangle(vert1, vert2, vert3, normal []float64) {
 	lightDirection[2] /= magnitude
 
 	dot := normal[0]*lightDirection[0] + normal[1]*lightDirection[1] + normal[2]*lightDirection[2]
-	shadingChar := shadingChars[clamp(dot*12, 0, len(shadingChars)-1)]
+	shadingChar := shadingChars[matrix.Clamp(dot*12, 0, len(shadingChars)-1)]
 
-	vert1 = toArray1D(multiplyMatrices(projection, toArray2D(vert1)))
-	vert2 = toArray1D(multiplyMatrices(projection, toArray2D(vert2)))
-	vert3 = toArray1D(multiplyMatrices(projection, toArray2D(vert3)))
+	vert1 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert1)))
+	vert2 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert2)))
+	vert3 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert3)))
 
 	r.drawLine(tempScreen, vert1[0], vert1[1], vert2[0], vert2[1], shadingChar)
 	r.drawLine(tempScreen, vert2[0], vert2[1], vert3[0], vert3[1], shadingChar)
@@ -150,10 +154,10 @@ func (r *Render) fillTriangle(vert1, vert2, vert3, normal []float64) {
 
 	r.fillTriangleArea(tempScreen, shadingChar)
 
-	for i := 0; i < len(r.matrix.screenBuffer[0]); i++ {
-		for j := 0; j < len(r.matrix.screenBuffer[0][0]); j++ {
+	for i := 0; i < len(r.matrix.ScreenBuffer[0]); i++ {
+		for j := 0; j < len(r.matrix.ScreenBuffer[0][0]); j++ {
 			if tempScreen[i][j] == shadingChar {
-				r.matrix.screenBuffer[0][i][j] = tempScreen[i][j]
+				r.matrix.ScreenBuffer[0][i][j] = tempScreen[i][j]
 			}
 		}
 	}
@@ -232,7 +236,7 @@ func (r *Render) fillTriangleArea(screen [][]rune, shadingChar rune) {
 	}
 }
 
-func loadOBJ(filename string) ([][]float64, error) {
+func LoadOBJ(filename string) ([][]float64, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
