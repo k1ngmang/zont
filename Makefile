@@ -2,19 +2,21 @@
 
 
 BINARY_NAME=zont
+OUT_DIR=.out
 
 
 build:
-	go build -o $(BINARY_NAME) ./cmd
+	mkdir -p $(OUT_DIR)
+	go build -o $(OUT_DIR)/$(BINARY_NAME) ./cmd
 
 
 run:
-	go run ./cmd
+	$(OUT_DIR)/$(BINARY_NAME)
 
 
 clean:
 	go clean
-	rm -f $(BINARY_NAME)
+	rm -rf $(OUT_DIR)
 
 test:
 	go test ./...

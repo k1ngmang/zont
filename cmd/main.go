@@ -9,7 +9,7 @@ import (
 func main() {
 	file := "models/cube.obj"
 
-	matrix := matrix.NewMatrix(10, 10)
+	matrix := matrix.NewMatrix(30, 30)
 
 	renderer := render.NewRender(matrix)
 
