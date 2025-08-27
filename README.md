@@ -5,6 +5,10 @@
 Simple and fast engine for rendering 3D graphics in the terminal
 </div>
 
+<video controls width="640">
+    <source src="https://raw.githubusercontent.com/k1ngmang/zont/branding/example.mp4" type="video/mp4">
+</video>
+
 ### How to use?
 First of all, you need to install the go compiler, then in the main file select the necessary settings (dimensions, object for rendering, etc.)
 ```go
