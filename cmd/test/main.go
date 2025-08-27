@@ -1,15 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"zontengine/internal/matrix"
 	"zontengine/internal/render"
 )
 
 func main() {
-	file := "models/cube.obj"
-	matrix := matrix.NewMatrix(20, 20)
+	file := "models/monkey.obj"
+	matrix := matrix.NewMatrix(30, 30)
 
 	renderer := render.NewRender(matrix)
 
@@ -18,6 +17,7 @@ func main() {
 		log.Fatalf("Error %s: %v", file, err)
 	}
 
-	str := renderer.RenderFrontFace(verts)
-	fmt.Println(str)
+	renderer.Render(verts)
+	//str := renderer.RenderFrontFace(verts)
+	//fmt.Println(str)
 }

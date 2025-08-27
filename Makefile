@@ -9,6 +9,8 @@ build:
 	mkdir -p $(OUT_DIR)
 	go build -o $(OUT_DIR)/$(BINARY_NAME) ./cmd
 
+render:
+	$(OUT_DIR)/$(BINARY_NAME) render
 
 run:
 	$(OUT_DIR)/$(BINARY_NAME)
