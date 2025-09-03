@@ -477,12 +477,12 @@ func LoadOBJ(filename string) ([][]float64, error) {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) == 0 {
+		line := strings.TrimSpace(scanner.Text())
+		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
 
-		if line[0] == 'v' {
+		if line[0] == 'v' && line[1] == ' ' {
 			parts := strings.Fields(line)
 			if len(parts) >= 4 {
 				x, _ := strconv.ParseFloat(parts[1], 64)
@@ -493,10 +493,26 @@ func LoadOBJ(filename string) ([][]float64, error) {
 		} else if line[0] == 'f' {
 			parts := strings.Fields(line)
 			if len(parts) >= 4 {
-				f1, _ := strconv.Atoi(parts[1])
-				f2, _ := strconv.Atoi(parts[2])
-				f3, _ := strconv.Atoi(parts[3])
-				faces = append(faces, f1-1, f2-1, f3-1) // OBJ индексы начинаются с 1
+				for i := 1; i <= 3; i++ {
+					vertexPart := parts[i]
+					vertexIndexParts := strings.Split(vertexPart, "/")
+					indexStr := vertexIndexParts[0]
+
+					index, err := strconv.Atoi(indexStr)
+					if err != nil {
+						continue
+					}
+
+					if index < 0 {
+						index = len(verts) + index
+					} else {
+						index = index - 1
+					}
+
+					if index >= 0 && index < len(verts) {
+						faces = append(faces, index)
+					}
+				}
 			}
 		}
 	}
@@ -507,8 +523,10 @@ func LoadOBJ(filename string) ([][]float64, error) {
 
 	result := make([][]float64, len(faces))
 	for i := 0; i < len(faces); i++ {
-		if faces[i] < len(verts) {
+		if faces[i] >= 0 && faces[i] < len(verts) {
 			result[i] = verts[faces[i]]
+		} else {
+			result[i] = []float64{0, 0, 0}
 		}
 	}
 
