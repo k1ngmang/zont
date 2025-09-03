@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"zontengine/internal/convert"
 	"zontengine/internal/matrix"
@@ -17,6 +18,13 @@ type Render struct {
 	matrix *matrix.Matrix
 	screen *screen.Screen
 	rotate *rotate.Rotate
+
+	// Кэширование
+	cacheMutex       sync.RWMutex
+	rotationCache    map[float64][][][]float64
+	transformedVerts map[float64][][]float64
+	projectionCache  map[[3]float64][]float64
+	normalCache      map[[3]float64][]float64
 }
 
 func NewRender(matrix *matrix.Matrix) *Render {
@@ -24,6 +32,11 @@ func NewRender(matrix *matrix.Matrix) *Render {
 		matrix: matrix,
 		screen: screen.NewScreen(matrix),
 		rotate: rotate.NewRotate(),
+
+		rotationCache:    make(map[float64][][][]float64),
+		transformedVerts: make(map[float64][][]float64),
+		projectionCache:  make(map[[3]float64][]float64),
+		normalCache:      make(map[[3]float64][]float64),
 	}
 }
 
@@ -111,9 +124,9 @@ func (r *Render) fillTriangleToBuffer(buffer [][]rune, vert1, vert2, vert3, norm
 	dot := normal[0]*lightDirection[0] + normal[1]*lightDirection[1] + normal[2]*lightDirection[2]
 	shadingChar := shadingChars[matrix.Clamp(dot*12, 0, len(shadingChars)-1)]
 
-	vert1 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert1)))
-	vert2 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert2)))
-	vert3 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert3)))
+	vert1 = r.getProjectedVertex(vert1, projection)
+	vert2 = r.getProjectedVertex(vert2, projection)
+	vert3 = r.getProjectedVertex(vert3, projection)
 
 	r.drawLineToBuffer(tempScreen, vert1[0], vert1[1], vert2[0], vert2[1], shadingChar)
 	r.drawLineToBuffer(tempScreen, vert2[0], vert2[1], vert3[0], vert3[1], shadingChar)
@@ -128,6 +141,25 @@ func (r *Render) fillTriangleToBuffer(buffer [][]rune, vert1, vert2, vert3, norm
 			}
 		}
 	}
+}
+
+func (r *Render) getProjectedVertex(vertex []float64, projection [][]float64) []float64 {
+	key := [3]float64{vertex[0], vertex[1], vertex[2]}
+
+	r.cacheMutex.RLock()
+	if cached, exists := r.projectionCache[key]; exists {
+		r.cacheMutex.RUnlock()
+		return cached
+	}
+	r.cacheMutex.RUnlock()
+
+	projected := convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vertex)))
+
+	r.cacheMutex.Lock()
+	r.projectionCache[key] = projected
+	r.cacheMutex.Unlock()
+
+	return projected
 }
 
 func (r *Render) drawLineToBuffer(buffer [][]rune, x1, y1, x2, y2 float64, ch rune) {
@@ -206,6 +238,14 @@ func (r *Render) renderThread() {
 func (r *Render) updateRotation() {
 	angle := r.matrix.GetAngle()
 
+	r.cacheMutex.RLock()
+	if cached, exists := r.rotationCache[angle]; exists {
+		r.rotate.Update(cached[0], cached[1], cached[2])
+		r.cacheMutex.RUnlock()
+		return
+	}
+	r.cacheMutex.RUnlock()
+
 	xMatrix := [][]float64{
 		{1, 0, 0},
 		{0, 1, 0},
@@ -224,10 +264,23 @@ func (r *Render) updateRotation() {
 		{0, 0, 1},
 	}
 
+	r.cacheMutex.Lock()
+	r.rotationCache[angle] = [][][]float64{xMatrix, yMatrix, zMatrix}
+	r.cacheMutex.Unlock()
+
 	r.rotate.Update(xMatrix, yMatrix, zMatrix)
 }
 
 func (r *Render) processVertices(verts [][]float64) [][]float64 {
+	angle := r.matrix.GetAngle()
+
+	r.cacheMutex.RLock()
+	if cached, exists := r.transformedVerts[angle]; exists {
+		r.cacheMutex.RUnlock()
+		return cached
+	}
+	r.cacheMutex.RUnlock()
+
 	var visibleVerts [][]float64
 
 	for i := 0; i < len(verts); i += 3 {
@@ -239,25 +292,52 @@ func (r *Render) processVertices(verts [][]float64) [][]float64 {
 		vert2 := convert.ToArray1D(matrix.MultiplyMatrices(r.rotate.GetX(), matrix.MultiplyMatrices(r.rotate.GetY(), matrix.MultiplyMatrices(r.rotate.GetZ(), convert.ToArray2D(verts[i+1])))))
 		vert3 := convert.ToArray1D(matrix.MultiplyMatrices(r.rotate.GetX(), matrix.MultiplyMatrices(r.rotate.GetY(), matrix.MultiplyMatrices(r.rotate.GetZ(), convert.ToArray2D(verts[i+2])))))
 
-		normal := []float64{
-			((vert2[1] - vert1[1]) * (vert3[2] - vert1[2])) - ((vert2[2] - vert1[2]) * (vert3[1] - vert1[1])),
-			((vert2[2] - vert1[2]) * (vert3[0] - vert1[0])) - ((vert2[0] - vert1[0]) * (vert3[2] - vert1[2])),
-			((vert2[0] - vert1[0]) * (vert3[1] - vert1[1])) - ((vert2[1] - vert1[1]) * (vert3[0] - vert1[0])),
-		}
-
-		magnitude := math.Sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2])
-		if magnitude > 0 {
-			normal[0] /= magnitude
-			normal[1] /= magnitude
-			normal[2] /= magnitude
-		}
+		normal := r.calculateNormal(vert1, vert2, vert3)
 
 		if normal[0]*vert1[0]+normal[1]*vert1[1]+normal[2]*(vert1[2]-10) > 1 {
 			visibleVerts = append(visibleVerts, vert1, vert2, vert3, normal)
 		}
 	}
 
+	r.cacheMutex.Lock()
+	r.transformedVerts[angle] = visibleVerts
+	r.cacheMutex.Unlock()
+
 	return visibleVerts
+}
+
+func (r *Render) calculateNormal(vert1, vert2, vert3 []float64) []float64 {
+	key := [3]float64{
+		vert1[0] + vert2[0] + vert3[0],
+		vert1[1] + vert2[1] + vert3[1],
+		vert1[2] + vert2[2] + vert3[2],
+	}
+
+	r.cacheMutex.RLock()
+	if cached, exists := r.normalCache[key]; exists {
+		r.cacheMutex.RUnlock()
+		return cached
+	}
+	r.cacheMutex.RUnlock()
+
+	normal := []float64{
+		((vert2[1] - vert1[1]) * (vert3[2] - vert1[2])) - ((vert2[2] - vert1[2]) * (vert3[1] - vert1[1])),
+		((vert2[2] - vert1[2]) * (vert3[0] - vert1[0])) - ((vert2[0] - vert1[0]) * (vert3[2] - vert1[2])),
+		((vert2[0] - vert1[0]) * (vert3[1] - vert1[1])) - ((vert2[1] - vert1[1]) * (vert3[0] - vert1[0])),
+	}
+
+	magnitude := math.Sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2])
+	if magnitude > 0 {
+		normal[0] /= magnitude
+		normal[1] /= magnitude
+		normal[2] /= magnitude
+	}
+
+	r.cacheMutex.Lock()
+	r.normalCache[key] = normal
+	r.cacheMutex.Unlock()
+
+	return normal
 }
 
 func (r *Render) fillTriangle(vert1, vert2, vert3, normal []float64) {
@@ -283,9 +363,9 @@ func (r *Render) fillTriangle(vert1, vert2, vert3, normal []float64) {
 	dot := normal[0]*lightDirection[0] + normal[1]*lightDirection[1] + normal[2]*lightDirection[2]
 	shadingChar := shadingChars[matrix.Clamp(dot*12, 0, len(shadingChars)-1)]
 
-	vert1 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert1)))
-	vert2 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert2)))
-	vert3 = convert.ToArray1D(matrix.MultiplyMatrices(projection, convert.ToArray2D(vert3)))
+	vert1 = r.getProjectedVertex(vert1, projection)
+	vert2 = r.getProjectedVertex(vert2, projection)
+	vert3 = r.getProjectedVertex(vert3, projection)
 
 	r.drawLine(tempScreen, vert1[0], vert1[1], vert2[0], vert2[1], shadingChar)
 	r.drawLine(tempScreen, vert2[0], vert2[1], vert3[0], vert3[1], shadingChar)
@@ -373,6 +453,16 @@ func (r *Render) fillTriangleArea(screen [][]rune, shadingChar rune) {
 			}
 		}
 	}
+}
+
+func (r *Render) ClearCache() {
+	r.cacheMutex.Lock()
+	defer r.cacheMutex.Unlock()
+
+	r.rotationCache = make(map[float64][][][]float64)
+	r.transformedVerts = make(map[float64][][]float64)
+	r.projectionCache = make(map[[3]float64][]float64)
+	r.normalCache = make(map[[3]float64][]float64)
 }
 
 func LoadOBJ(filename string) ([][]float64, error) {

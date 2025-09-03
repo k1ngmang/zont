@@ -8,7 +8,6 @@ import (
 	"zontengine/internal/config"
 	"zontengine/internal/matrix"
 	"zontengine/internal/render"
-	"zontengine/internal/tui"
 )
 
 func main() {
@@ -20,7 +19,7 @@ func main() {
 	} else {
 		log.Fatal("Incorrect arguments. Usage: program render")
 	}
-	tui.Run()
+	//tui.Run()
 }
 
 func renderFromConfig() error {
