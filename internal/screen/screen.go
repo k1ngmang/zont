@@ -1,5 +1,11 @@
 package screen
 
+/**
+ * Handles terminal screen operations including initialization, clearing,
+ * and rendering of the screen buffer. Manages the display of ASCII graphics
+ * in the terminal with proper formatting and cursor control.
+ */
+
 import (
 	"fmt"
 	"strings"

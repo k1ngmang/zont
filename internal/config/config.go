@@ -1,5 +1,11 @@
 package config
 
+/**
+* Handles configuration management for the 3D rendering application.
+* Provides functionality to load and save rendering settings to
+* a JSON configuration file.
+ */
+
 import (
 	"encoding/json"
 	"fmt"

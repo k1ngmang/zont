@@ -1,5 +1,23 @@
 package render
 
+/**
+ * Renders 3D models in terminal by processing vertices, applying transformations,
+ * performing backface culling, and rasterizing triangles with ASCII shading.
+ *
+ * @param matrix  the matrix instance used for screen buffering and mathematical operations
+ * @param screen  the screen instance responsible for terminal display
+ * @param rotate  the rotation manager for 3D transformations
+ *
+ * The renderer supports:
+ * - Loading OBJ files and extracting vertices/faces
+ * - Real-time rotation animation with FPS control
+ * - Backface culling using surface normals
+ * - Projection from 3D to 2D coordinates
+ * - Triangle rasterization with line drawing and area filling
+ * - Lighting simulation using ASCII character shading
+ * - Comprehensive caching system for performance optimization
+ */
+
 import (
 	"bufio"
 	"math"

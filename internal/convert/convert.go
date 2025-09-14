@@ -1,5 +1,10 @@
 package convert
 
+/**
+ * Provides conversion utilities between 1D and 2D array representations.
+ * Essential for matrix operations that require specific array dimensionalities.
+ */
+
 func ToArray1D(array2D [][]float64) []float64 {
 	array1D := make([]float64, len(array2D))
 	for i := 0; i < len(array1D); i++ {

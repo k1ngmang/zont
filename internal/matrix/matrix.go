@@ -1,5 +1,22 @@
 package matrix
 
+/**
+ * Provides matrix operations and screen buffer management for 3D rendering.
+ * Handles mathematical transformations, z-sorting of triangles, and screen buffering.
+ *
+ * @param cols          number of columns in the terminal screen
+ * @param rows          number of rows in the terminal screen
+ * @param angle         current rotation angle for 3D transformations
+ * @param ScreenBuffer  double buffer system for smooth rendering [0]=current, [1]=previous
+ *
+ * The matrix supports:
+ * - Matrix multiplication for 3D transformations
+ * - Z-depth sorting of triangles for proper rendering order
+ * - Screen buffer management with double buffering
+ * - Clamping values to specified ranges
+ * - Managing screen dimensions and rotation state
+ */
+
 import (
 	"math"
 	"sort"
