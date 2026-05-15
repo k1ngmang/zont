@@ -7,7 +7,7 @@ package convert
 
 func ToArray1D(array2D [][]float64) []float64 {
 	array1D := make([]float64, len(array2D))
-	for i := 0; i < len(array1D); i++ {
+	for i := range array1D {
 		array1D[i] = array2D[i][0]
 	}
 	return array1D

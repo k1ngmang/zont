@@ -38,7 +38,7 @@ func NewMatrix(cols, rows int) *Matrix {
 
 	m.ScreenBuffer[0] = make([][]rune, rows)
 	m.ScreenBuffer[1] = make([][]rune, rows)
-	for i := 0; i < rows; i++ {
+	for i := range rows {
 		m.ScreenBuffer[0][i] = make([]rune, cols+1)
 		m.ScreenBuffer[1][i] = make([]rune, cols+1)
 	}
@@ -56,7 +56,7 @@ func MultiplyMatrices(matrixA, matrixB [][]float64) [][]float64 {
 		result[i] = make([]float64, len(matrixB[0]))
 	}
 
-	for i := 0; i < len(matrixA); i++ {
+	for i := range matrixA {
 		for j := 0; j < len(matrixB[0]); j++ {
 			for k := 0; k < len(matrixA[0]); k++ {
 				result[i][j] += matrixA[i][k] * matrixB[k][j]

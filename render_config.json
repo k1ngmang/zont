@@ -1,5 +1,5 @@
 {
-  "width": 30,
-  "height": 30,
-  "model_file": "s.obj"
+    "width": 30,
+    "height": 30,
+    "model_file": "models/cube.obj"
 }

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	file := "models/cube.obj"
+	file := "models/monkey.obj"
 	matrix := matrix.NewMatrix(50, 50)
 
 	renderer := render.NewRender(matrix)
@@ -18,7 +18,7 @@ func main() {
 		log.Fatalf("Error %s: %v", file, err)
 	}
 
-	//renderer.Render(verts)
+	renderer.Render(verts)
 	str := renderer.RenderFrontFace(verts)
 	fmt.Println(str)
 }
